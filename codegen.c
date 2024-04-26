@@ -32,6 +32,7 @@ FILE *codegenout;  // the output of code generation
 #define JGE(labelnum) fprintf(codegenout,"\tjge .L%d\n", labelnum)
 #define JMP(labelnum) fprintf(codegenout,"\tjmp .L%d\n", labelnum)
 #define LABEL(labelnum) fprintf(codegenout,".L%d:\n", labelnum)
+#define JNE(labelnum) fprintf(codegenout,"\tjne .L%d\n", labelnum)
 
 const string const param_registers[] = { "%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"}; // all const
 
@@ -235,11 +236,68 @@ static void codegen_funclist(T_funclist funclist) {
 }
 
 static void codegen_func(T_func func) {
-  fprintf(stderr, "TODO: codegen_func (remove this message when implemented).");
+  // Create a new scope for the function
+  current_offset_scope = create_offset_scope(current_offset_scope);
+
+  // Emit pseudo-ops for the function definition
+  fprintf(codegenout, ".text\n.globl %s\n.type %s, @function\n", func->ident, func->ident);
+
+  // Emit a label for the function
+  fprintf(codegenout, "%s:\n", func->ident);
+  T_paramlist paramlist = func->paramlist;
+  int param_index = 0;
+  
+  // Update stack size and offsets for parameters before emitting the prologue
+  while (paramlist != NULL) {
+    if (param_index < 6) { // For parameters that are passed in registers
+      // Calculate and insert stack offset for parameter
+      insert_offset(current_offset_scope, paramlist->ident, 8); // Assuming all parameters are 64-bit (8)
+      
+      // Move parameter from register to its stack location
+      int offset = lookup_offset_in_scope(current_offset_scope, paramlist->ident);
+      MOV_TO_OFFSET(param_registers[param_index], offset);
+    }
+    paramlist = paramlist->tail;
+    param_index++;
+  }
+
+  // Add local declarations to the scope
+  codegen_decllist(func->decllist);
+
+  // Emit the function prologue
+  emit_prologue(current_offset_scope->stack_size); 
+
+  // Generate code for the body of the function
+  codegen_stmtlist(func->stmtlist);
+
+  //BUG 
+
+  //code for return expression
+  codegen_expr(func->returnexpr);
+
+  POP("%rax");
+
+  // Emit the function epilogue
+  emit_epilogue();
+
+  // Destroy the function's scope
+  current_offset_scope = destroy_offset_scope(current_offset_scope);
 }
 
 static void codegen_decllist(T_decllist decllist) {
-  fprintf(stderr, "TODO: codegen_decllist (remove this message when implemented).");
+  //loop over each element in the decllist list
+  while (decllist != NULL)
+  {
+    //insert each element into the offset_scope (assume all values in the stack have an offset of 8 bytes)
+    int size = 8;
+
+    //insert variable into current scope with appropriate size
+    insert_offset(current_offset_scope, decllist->decl->ident, size);
+
+    //move to the next declaration in the list
+    decllist = decllist->tail;
+  }
+
 }
 
 /* statements */
@@ -265,27 +323,126 @@ static void codegen_stmt(T_stmt stmt) {
   }
 }
 
-static void codegen_assignstmt(T_stmt stmt) {
-  fprintf(stderr, "TODO: codegen_assignstmt (remove this message when implemented).");
+static void codegen_assignstmt(T_stmt stmt) { //PROJECT 4
+  // Gen. code right-hand side
+  codegen_expr(stmt->assignstmt.right);
+  POP("%rax"); 
+
+  // Check left-hand side; deref
+  if (stmt->assignstmt.left->kind == E_unaryexpr) 
+  {
+        
+        // Gen. code for l-express.; deref
+        codegen_expr(stmt->assignstmt.left->unaryexpr.expr);
+        
+        // Gen. code for r-express.
+        codegen_expr(stmt->assignstmt.right); 
+        
+        // Pop result from stack into rax
+        POP("%rax");
+        // Pop result address from stack into rbx
+        POP("%rbx");
+
+        // Move value from register to address pointed to by l-express.
+        MOV("%rax", "(%rbx)");
+  } 
+
+  else 
+  {
+      // Generate code for r-expression
+      codegen_expr(stmt->assignstmt.right); 
+
+      // Pop resulting value from stack into rax
+      POP("%rax");
+
+      // Lookup offset
+      int offset = lookup_offset_in_scope(current_offset_scope, stmt->assignstmt.left->identexpr);
+
+      // Move the value from register to stack add.
+      MOV_TO_OFFSET("%rax", offset);
+  }
+  
 }
 
-static void codegen_ifstmt(T_stmt stmt) {
-  // pending project 4
-  fprintf(stderr, "TODO: codegen_ifstmt (project 4)\n");
+
+// Assuming you have a global variable for label counter  
+static int label_counter = 0;  
+
+static void codegen_ifstmt(T_stmt stmt) { //PROJECT 4
+  // The label for the end of the if branch, to skip the if body if the condition is false
+    int after_if_label = label_counter++;
+    
+    // Generate code for the condition and get the result in %rax
+    codegen_expr(stmt->ifstmt.cond);
+    POP("%rax");  // Assume condition result is now in %rax
+
+    // Compare the result to "false" (0) and jump to the label after the if statement if condition is false
+    CMP0("%rax"); 
+    JE(after_if_label);
+
+    // Contents of the if branch
+    codegen_stmt(stmt->ifstmt.body);
+
+    // Label for first instruction after the if statement
+    LABEL(after_if_label);
 }
 
-static void codegen_ifelsestmt(T_stmt stmt) {
-  // pending project 4
-  fprintf(stderr, "TODO: codegen_ifelsestmt (project 4)\n");
+static void codegen_ifelsestmt(T_stmt stmt) { //PROJECT 4
+  // Labels for the else branch and the code following the if-else statement
+  int else_label = label_counter++;
+  int after_ifelse_label = label_counter++;
+
+  // Generate code for the condition and store the result in %rax
+  codegen_expr(stmt->ifelsestmt.cond);
+  POP("%rax");
+  
+  // Compare to "false" and jump to the else branch if condition is false
+  CMP0("%rax");
+  JE(else_label);
+
+  // Contents of the if branch
+  codegen_stmt(stmt->ifelsestmt.ifbranch);
+  
+  // Unconditionally jump past else branch
+  JMP(after_ifelse_label);
+
+  // Label for the else branch
+  LABEL(else_label);
+  codegen_stmt(stmt->ifelsestmt.elsebranch);
+
+  // Label for the first instruction after the if-else statement
+  LABEL(after_ifelse_label);
 }
 
-static void codegen_whilestmt(T_stmt stmt) {
-  // pending project 4
-  fprintf(stderr, "TODO: codegen_whilestmt (project 4)\n");
+static void codegen_whilestmt(T_stmt stmt) { //PROJECT 4
+  // Labels for the start and end of the while loop
+  int start_label = label_counter++;
+  int end_label = label_counter++;
+
+  // Label at the start of the loop, where the condition will be re-evaluated each iteration
+  LABEL(start_label);
+
+  // Generate code for the condition expression and store the result in %rax
+  codegen_expr(stmt->whilestmt.cond);
+  POP("%rax");
+
+  // Compare the result to "false" and jump to the end of the loop if false
+  CMP0("%rax");
+  JE(end_label);
+
+  // Contents of the while loop body
+  codegen_stmt(stmt->whilestmt.body);
+
+  // Unconditionally jump to the loop head to re-evaluate the condition
+  JMP(start_label);
+
+  // Label for the first instruction after the while statement
+  LABEL(end_label);
 }
 
-static void codegen_compoundstmt(T_stmt stmt) {
-  fprintf(stderr, "TODO: codegen_compoundstmt (remove this message when implemented).");
+static void codegen_compoundstmt(T_stmt stmt) { 
+  //generate the code for the body of the compound statement
+  codegen_stmtlist(stmt->compoundstmt.stmtlist); 
 }
 
 /* expressions */
@@ -317,11 +474,19 @@ static void codegen_identexpr(T_expr expr) {
 }
 
 static void codegen_callexpr(T_expr expr) {
-  fprintf(stderr, "TODO: codegen_callexpr (remove this message when implemented).");
+  codegen_expr(expr->callexpr.args->expr);
+
+  POP("%rdi");
+
+  CALL(expr->callexpr.ident);
+
+  PUSH("%rax"); 
 }
 
 static void codegen_intexpr(T_expr expr) {
-  fprintf(stderr, "TODO: codegen_intexpr (remove this message when implemented).");
+  //move the immediate value into a register and push it onto the stack
+  MOV_FROM_IMMEDIATE(expr->intexpr, "%rax");
+  PUSH("%rax"); 
 }
 
 static void codegen_charexpr(T_expr expr) {
@@ -338,16 +503,200 @@ static void codegen_arrayexpr(T_expr expr) {
   // bonus exercise
 }
 
-static void codegen_unaryexpr(T_expr expr) {
-  fprintf(stderr, "TODO: codegen_unaryexpr\n");
+static void codegen_unaryexpr(T_expr expr) { //PROJECT 4 
+  // Check the operator type
+  switch(expr->unaryexpr.op) {
+    case E_op_ref: // Reference operator '&'
+      // Ensure that the expression to reference is an identifier
+      if (expr->unaryexpr.expr->kind != E_identexpr) {
+        fprintf(stderr, "FATAL: Unary expression operand must be an identifier\n");
+        exit(1);
+      }
+
+      // Save the base pointer to another register (e.g., rax)
+      fprintf(codegenout, "\tmov\t%%rbp, %%rax\n");
+
+      // Lookup the identifier's offset in the current scope
+      int offset = lookup_offset_in_scope(current_offset_scope, expr->unaryexpr.expr->identexpr);
+
+      // Compute the address by subtracting the offset from the base pointer copy in rax
+      fprintf(codegenout, "\tsub\t$%d, %%rax\n", offset);
+
+      // Save the result by pushing it onto the stack
+      fprintf(codegenout, "\tpush\t%%rax\n");
+      break;
+
+    case E_op_deref: // Dereference operator '*'
+      // Generate code for the expression inside the unary expression
+      codegen_expr(expr->unaryexpr.expr);
+
+      // Pop the result from the stack into a register (e.g., rax)
+      fprintf(codegenout, "\tpop\t%%rax\n");
+
+      // Load the value from the memory address pointed to by rax into rax
+      fprintf(codegenout, "\tmov\t(%%rax), %%rax\n");
+
+      // Push the dereferenced value onto the stack
+      fprintf(codegenout, "\tpush\t%%rax\n");
+      break;
+
+    case E_op_not: // Logical negation operator '!'
+      // Generate code for the expression inside the unary expression
+      codegen_expr(expr->unaryexpr.expr);
+
+      // Pop the result from the stack into a register (e.g., rax)
+      fprintf(codegenout, "\tpop\t%%rax\n");
+
+      // Compare the result to zero and set the zero flag (ZF) accordingly
+      fprintf(codegenout, "\tcmp\t$0, %%rax\n");
+
+      // Set rax to 1 if ZF is set (logical not)
+      fprintf(codegenout, "\tsete\t%%al\n");
+
+      // Move the result into rax
+      fprintf(codegenout, "\tmovzbq\t%%al, %%rax\n");
+
+      // Push the result onto the stack
+      fprintf(codegenout, "\tpush\t%%rax\n");
+      break;
+
+    default:
+      fprintf(stderr, "FATAL: Unsupported unary operator\n");
+      exit(1);
+  }
 }
 
-static void codegen_binaryexpr(T_expr expr) {
-  fprintf(stderr, "TODO: codegen_binaryexpr (remove this message when implemented).");
+static void codegen_binaryexpr(T_expr expr) { //PROJECT 4
+    assert(expr && expr->kind == E_binaryexpr);  // Ensure we have a binary expression
+
+    // Generate code for the left operand
+    codegen_expr(expr->binaryexpr.left);
+    // Generate code for the right operand
+    codegen_expr(expr->binaryexpr.right);
+
+    // Pop the right operand into %rbx (it was pushed last)
+    POP("%rbx");
+    // Pop the left operand into %rax
+    POP("%rax");
+
+    // Apply the binary operator
+    switch (expr->binaryexpr.op) {
+        case E_op_plus:
+            ADD("%rbx", "%rax");  // Result of rax + rbx will be in %rax
+            break;
+        case E_op_minus:
+            if (expr->binaryexpr.left->kind == E_pointertype) { // Left operand is a pointer
+            // Scale right operand by size of the type pointed to
+            fprintf(codegenout, "\timul $%d, %%rbx\n", (int)sizeof(int)); 
+            }
+            SUB("%rbx", "%rax");
+            break;
+        case E_op_times:
+            IMUL("%rbx", "%rax"); // Result of rax * rbx will be in %rax
+            break;
+        case E_op_divide:
+            // Prepare %rdx:%rax for division
+            CDQ();
+            // IDIV uses %rax for the dividend and places quotient in %rax, remainder in %rdx
+            IDIV("%rbx");
+            break;
+        
+        case E_op_and:
+            // Generate code for the left operand
+            codegen_expr(expr->binaryexpr.left);
+            // Generate code for the right operand
+            codegen_expr(expr->binaryexpr.right);
+
+            // Pop the right operand into %rbx (it was pushed last)
+            POP("%rbx");
+            // Pop the left operand into %rax
+            POP("%rax");
+
+            // Perform logical AND operation
+            // In assembly, we can use AND instruction to perform logical AND
+            fprintf(codegenout, "\tand %%rbx, %%rax\n");
+
+            // Push the result onto the stack
+            PUSH("%rax");
+            break;
+        
+        case E_op_or:
+            // Generate code for the left operand
+            codegen_expr(expr->binaryexpr.left);
+            // Generate code for the right operand
+            codegen_expr(expr->binaryexpr.right);
+
+            // Pop the right operand into %rbx (it was pushed last)
+            POP("%rbx");
+            // Pop the left operand into %rax
+            POP("%rax");
+
+            // Perform logical OR operation
+            // In assembly, we can use OR instruction to perform logical OR
+            fprintf(codegenout, "\tor %%rbx, %%rax\n");
+
+            // Push the result onto the stack
+            PUSH("%rax");
+            break;
+
+        case E_op_eq:
+            // Generate code for the left operand
+            codegen_expr(expr->binaryexpr.left);
+            // Generate code for the right operand
+            codegen_expr(expr->binaryexpr.right);
+
+            // Pop the right operand into %rbx (it was pushed last)
+            POP("%rbx");
+            // Pop the left operand into %rax
+            POP("%rax");
+
+            // Compare the left and right operands
+            fprintf(codegenout, "\tcmp %%rbx, %%rax\n");
+            // Set ZF if the operands are equal
+            fprintf(codegenout, "\tsete %%al\n");
+            // Move zero-extended AL register to AX
+            fprintf(codegenout, "\tmovzbq %%al, %%rax\n");
+
+            // Push the result onto the stack
+            PUSH("%rax");
+            break;
+        
+        case E_op_lt:
+            // Generate code for the left operand
+            codegen_expr(expr->binaryexpr.left);
+            // Generate code for the right operand
+            codegen_expr(expr->binaryexpr.right);
+
+            // Pop the right operand into %rbx (it was pushed last)
+            POP("%rbx");
+            // Pop the left operand into %rax
+            POP("%rax");
+
+            // Compare the left and right operands
+            fprintf(codegenout, "\tcmp %%rbx, %%rax\n");
+            // Set SF and OF flags to 1 if the left operand is less than the right operand
+            fprintf(codegenout, "\tsetl %%al\n");
+            // Move zero-extended AL register to AX
+            fprintf(codegenout, "\tmovzbq %%al, %%rax\n");
+
+            // Push the result onto the stack
+            PUSH("%rax");
+            break;
+
+        // Add cases for other operators as necessary
+        default:
+            fprintf(stderr, "Unsupported binary operator\n");
+            exit(1);
+    }
+
+    // Push the result onto the stack
+    PUSH("%rax");
 }
 
 static void codegen_castexpr(T_expr expr) {
   // bonus: truncate or extend data between bitwidths depending on type  
+  // Cast the expression to the desired type
+  codegen_expr(expr->castexpr.expr);
 }
 
 /**
