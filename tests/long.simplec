@@ -1,0 +1,90 @@
+do(a) : function(int) -> int {
+  return a;
+}
+
+re(a) : function(int) -> int {
+  int y;
+  y = 2;
+  if (a == y) {
+      y = 3;
+  }
+  return y;
+}
+
+mi(a) : function(int) -> int {
+  int y;
+  int x;
+  int z;
+  y = 3;
+  x = 0;
+  z = 1;
+
+  return y + x + z;
+}
+
+fa(a) : function(int) -> int {
+  int y;
+  y = 4;
+
+  if (y == 2) {
+    a = y;
+  }
+
+  return a;
+}
+
+so(a) : function(int) -> int {
+  int y;
+  y = 5;
+  if(!y) {
+    a = 0;
+  } else {
+    a = y;
+  }
+  return a;
+}
+
+la(a) : function(int) -> int {
+  return a + 1;
+}
+
+ti(a) : function(int) -> int {
+  if (a == 1) {
+      a = 2;
+  }
+  return a;
+}
+
+
+main {
+  int var;
+  int res;
+  int counter;
+  pointer<int> pointy;
+  var = 5;
+  counter = 10;
+
+  while (counter) {
+    res = do(var);
+    var = 5;
+    res = re(var);
+    var = var - 1;
+    res = mi(var);
+    var = var - 1;
+    res = fa(var);
+    var = var - 1;    
+    res = so(var);
+    var = var - 1;
+    res = la(var);
+    var = var - 1;
+    res = ti(var);
+
+    pointy = &res;
+    *pointy = var;
+    res = *pointy;
+
+    counter = (counter/2);
+  }
+
+  return 0;
+}

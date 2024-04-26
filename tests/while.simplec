@@ -1,0 +1,13 @@
+main {
+  int cnt;
+  int x;
+
+  cnt = 3;
+  x = 0;
+  while (cnt) {
+    x = x + 24;
+    cnt = cnt - 1;
+  }
+  
+  return x;
+}

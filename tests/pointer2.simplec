@@ -1,0 +1,10 @@
+main {
+  int x;
+  pointer<int> y;
+  int z;
+  x = 10;
+  y = &x; /* y holds x's address */
+  *y = 7; /* y sets x to 7 */
+  z = *y; /* z is x value, 7 */
+  return x;  /* 7 */
+}

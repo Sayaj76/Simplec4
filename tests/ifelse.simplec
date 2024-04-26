@@ -1,0 +1,13 @@
+main {
+  int cond;
+  int x;
+
+  cond = 1;  /* change to 0 or 1 */
+  if (cond) {
+    x = 23;
+  } else {
+    x = 42;
+  }
+  
+  return x;
+}

@@ -1,0 +1,34 @@
+main {
+  int x;
+  int y;
+  int a;
+  int b;
+  int c;
+  pointer<int> z;
+  x = 10;
+  y = 2;
+  a = 1;
+  b = 0;
+  c = 3;
+  z = &x - (pointer<int>)8;
+
+  if ((b && a) == 0) {
+  	while (!(b)) {
+  		if ((b && a) == 1) {
+  			*z = 25;
+  		} else {
+  			b = b + 1;
+  			*z = b;
+  		}
+  		b = b + 1;
+  	}
+  } else {
+  	a = 0;
+  	*z = 0;
+  	b = 0;
+  	c =  1;
+  	*z = 1;
+  }
+
+  return *z;
+}

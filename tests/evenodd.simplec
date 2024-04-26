@@ -1,0 +1,31 @@
+isodd(x) : function(int) -> int {
+  if (x % 3 == 1) {
+    x = x + 1;
+  } else if (x % 2 == 0) {
+    x = 2;
+  } else {
+    x = 11;
+  }
+  return x;
+}
+
+iseven(x) : function(int) -> int {
+  return 2;
+}
+
+main {
+
+  int x;
+  int y;
+  int fifo;
+  x = 3;
+  y = 2;
+  fifo = isodd(x);
+  fifo = iseven(y);
+  x = x + y;
+  y = y + x;
+  fifo = isodd(x);
+  fifo = iseven(y);
+
+  return y;
+}

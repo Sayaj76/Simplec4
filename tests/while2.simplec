@@ -1,0 +1,10 @@
+main {
+  int cnt;
+
+  cnt = 3;
+  while (cnt) {
+    cnt = cnt - 1;
+  }
+  
+  return cnt;
+}

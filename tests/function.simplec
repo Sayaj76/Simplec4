@@ -1,0 +1,40 @@
+funct(a) : function(int) -> int {
+  int x;
+  int cond;
+  x = 3;
+  cond = 1;
+  if (1 && 0) {
+    x = x + a;
+  } else if (!(cond)) {
+    x = 0;
+  } else {
+    x = ((x * a));
+  }
+  
+  return x;
+}
+
+main {
+  int x;
+  int z;
+  int flag;
+  int w;
+  pointer<int> y;
+  x = 1;
+  x = (x + funct(x));
+  y = &x;
+  *y = 7;
+  x = x + *y;
+  
+  flag = 1;
+  while (flag) {
+    if (flag) {
+      flag = 0;
+    } else {
+      flag = 1;
+    }
+    *y = 8;
+  }
+
+  return *y;
+}

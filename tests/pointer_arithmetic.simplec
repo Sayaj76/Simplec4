@@ -1,0 +1,9 @@
+main {
+  int x;
+  int y;
+  pointer<int> z;
+  x = 1;
+  y = 2;
+  z = &x - (pointer<int>)8;
+  return *z;
+}

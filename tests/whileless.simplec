@@ -1,0 +1,29 @@
+main {
+  int res;
+  int var;
+  int x;
+  res = 2;
+  var = 1;
+  x = 0;
+
+ while (var) { 
+
+  if (x < 1) {
+  	res = res + var;
+  }
+
+  if (1 < 2) {
+  	res = res - 1;
+  }
+
+  x = 3;
+  
+  if (x < 2) {
+  	res = x;
+  }
+  
+  var = 0;
+ }
+
+  return res;
+}

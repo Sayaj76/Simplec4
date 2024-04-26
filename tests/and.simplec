@@ -1,0 +1,45 @@
+main {
+
+  int x;
+  int y;
+
+  pointer<int> helper;
+
+  x = 2;
+  y = 13;
+
+  if (1 && 1) {
+  	helper = &y;
+  	*helper = 42;
+  	y =  *helper + 1;
+    x = x + 1;
+  }
+
+  if (1 && 0) {
+  	helper = &x;
+  	*helper = 24;
+  	y =  *helper + 1;
+    x = x + 1;
+  }
+
+  if (0 && 0) {
+  	helper = &y;
+  	*helper = 4;
+ 	 	y =  *helper + 0;
+    x = x + 1;
+  }
+
+  if (0 && 0) {
+  	helper = &x;
+  	*helper = 2;
+  	y =  *helper + 0;
+    x = x + 1;
+  }
+
+  if (1 && 1) {
+    x = x + 6;
+  }
+
+
+  return x;
+}

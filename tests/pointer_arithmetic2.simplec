@@ -1,0 +1,15 @@
+zzz(x) : function(int) -> int { 
+	return x + 7;
+}
+
+main {
+  int x;
+  int y;
+  pointer<int> z;
+  x = 1;
+  y = 2;
+  z = &x - (pointer<int>)8;
+  x = zzz(y);
+  z = &x;
+  return *z;
+}
