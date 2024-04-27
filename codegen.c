@@ -42,7 +42,7 @@ static void codegen_decllist(T_decllist decllist);
 
 static void codegen_stmtlist(T_stmtlist stmtlist);
 
-static void codegen_funclist(T_funclist funclist);
+static void codegen_funclist(T_funclist funclist); 
 
 static void codegen_func(T_func func);
 
@@ -496,13 +496,42 @@ static void codegen_charexpr(T_expr expr) {
   PUSH("%rax");
 }
 
-static void codegen_strexpr(T_expr expr) {
-  // bonus exercise
-}
-
-static void codegen_arrayexpr(T_expr expr) {
-  // bonus exercise
-}
+static void codegen_strexpr(T_expr expr) {  
+  // Assuming that expr->strexpr is a pointer to the string  
+  char* str = expr->strexpr;  
+  
+  // Store the string in a global variable  
+  fprintf(codegenout, ".data\n");  
+  fprintf(codegenout, ".str%d:\n", label_counter);  
+  fprintf(codegenout, ".string \"%s\"\n", str);  
+  
+  // Load the address of the string into a register  
+  fprintf(codegenout, ".text\n");  
+  fprintf(codegenout, "\tlea .str%d(%%rip), %%rax\n", label_counter++);  
+  
+  // Push the address onto the stack  
+  PUSH("%rax");  
+}  
+  
+static void codegen_arrayexpr(T_expr expr) {  
+  // Assuming that expr->arrayexpr is a pointer to the array  
+  int* array = expr->arrayexpr;  
+  int array_size = expr->arrayexpr_size;  
+  
+  // Store the array in a global variable  
+  fprintf(codegenout, ".data\n");  
+  fprintf(codegenout, ".arr%d:\n", label_counter);  
+  for (int i = 0; i < array_size; i++) {  
+    fprintf(codegenout, ".long %d\n", array[i]);  
+  }  
+  
+  // Load the address of the array into a register  
+  fprintf(codegenout, ".text\n");  
+  fprintf(codegenout, "\tlea .arr%d(%%rip), %%rax\n", label_counter++);  
+  
+  // Push the address onto the stack  
+  PUSH("%rax");  
+}  
 
 static void codegen_unaryexpr(T_expr expr) { //PROJECT 4 
   // Check the operator type
