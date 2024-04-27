@@ -723,10 +723,6 @@ static void emit_epilogue() {
 /**
  * This function returns the size of a type in bytes.
  */
-static int bitwidth(T_type type) {
-  switch (type->kind) {
-  case E_primitivetype:
-    switch (type->primitivetype) {
     case E_typename_int:
       // 32-bit integers
       return 4;
