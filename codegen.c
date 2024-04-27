@@ -368,77 +368,78 @@ static void codegen_assignstmt(T_stmt stmt) { //PROJECT 4
 // Assuming you have a global variable for label counter  
 static int label_counter = 0;  
 
-static void codegen_ifstmt(T_stmt stmt) { //PROJECT 4
-  // The label for the end of the if branch, to skip the if body if the condition is false
-    int after_if_label = label_counter++;
+static void codegen_ifstmt(T_stmt stmt) { //Function to generate code for if statement  
+    // The label for the end of the if branch, to skip the if body if the condition is false  
+    int after_if_label = label_counter++;  
+      
+    // Generate code for the condition and get the result in %rax  
+    codegen_expr(stmt->ifstmt.cond);  
+    POP("%rax");  // Pop the value from the stack to %rax, assuming the result of the condition is now in %rax  
+  
+    // Compare the result to "false" (0) and jump to the label after the if statement if condition is false  
+    CMP0("%rax");   
+    JE(after_if_label); // If condition is false, jump to the end of the if statement  
+  
+    // Execute the if branch  
+    codegen_stmt(stmt->ifstmt.body); // Generate code for the body of the if statement  
+  
+    // Label for first instruction after the if statement  
+    LABEL(after_if_label);  
+}  
+  
+static void codegen_ifelsestmt(T_stmt stmt) { //Function to generate code for if-else statement  
+  // Labels for the else branch and the code following the if-else statement  
+  int else_label = label_counter++;  
+  int after_ifelse_label = label_counter++;  
+  
+  // Generate code for the condition and store the result in %rax  
+  codegen_expr(stmt->ifelsestmt.cond);  
+  POP("%rax"); // Pop the value from the stack to %rax  
     
-    // Generate code for the condition and get the result in %rax
-    codegen_expr(stmt->ifstmt.cond);
-    POP("%rax");  // Assume condition result is now in %rax
-
-    // Compare the result to "false" (0) and jump to the label after the if statement if condition is false
-    CMP0("%rax"); 
-    JE(after_if_label);
-
-    // Contents of the if branch
-    codegen_stmt(stmt->ifstmt.body);
-
-    // Label for first instruction after the if statement
-    LABEL(after_if_label);
-}
-
-static void codegen_ifelsestmt(T_stmt stmt) { //PROJECT 4
-  // Labels for the else branch and the code following the if-else statement
-  int else_label = label_counter++;
-  int after_ifelse_label = label_counter++;
-
-  // Generate code for the condition and store the result in %rax
-  codegen_expr(stmt->ifelsestmt.cond);
-  POP("%rax");
+  // Compare to "false" and jump to the else branch if condition is false  
+  CMP0("%rax");  
+  JE(else_label); // If condition is false, jump to the else branch  
   
-  // Compare to "false" and jump to the else branch if condition is false
-  CMP0("%rax");
-  JE(else_label);
-
-  // Contents of the if branch
-  codegen_stmt(stmt->ifelsestmt.ifbranch);
+  // Execute the if branch  
+  codegen_stmt(stmt->ifelsestmt.ifbranch); // Generate code for the if branch  
+    
+  // Unconditionally jump past else branch  
+  JMP(after_ifelse_label); // After executing if branch, jump to the end of the if-else statement  
   
-  // Unconditionally jump past else branch
-  JMP(after_ifelse_label);
+  // Label for the else branch  
+  LABEL(else_label);  
+  codegen_stmt(stmt->ifelsestmt.elsebranch); // Generate code for the else branch  
+  
+  // Label for the first instruction after the if-else statement  
+  LABEL(after_ifelse_label);  
+}  
+  
+static void codegen_whilestmt(T_stmt stmt) { //Function to generate code for while statement  
+  // Labels for the start and end of the while loop  
+  int start_label = label_counter++;  
+  int end_label = label_counter++;  
+  
+  // Label at the start of the loop, where the condition will be re-evaluated each iteration  
+  LABEL(start_label);  
+  
+  // Generate code for the condition expression and store the result in %rax  
+  codegen_expr(stmt->whilestmt.cond);  
+  POP("%rax"); // Pop the value from the stack to %rax  
+  
+  // Compare the result to "false" and jump to the end of the loop if false  
+  CMP0("%rax");  
+  JE(end_label); // If condition is false, jump to the end of the while loop  
+  
+  // Execute the while loop body  
+  codegen_stmt(stmt->whilestmt.body); // Generate code for the body of the while loop  
+  
+  // Unconditionally jump to the loop head to re-evaluate the condition  
+  JMP(start_label); // After executing body, jump back to the start of the loop to evaluate condition again  
+  
+  // Label for the first instruction after the while statement  
+  LABEL(end_label);  
+}  
 
-  // Label for the else branch
-  LABEL(else_label);
-  codegen_stmt(stmt->ifelsestmt.elsebranch);
-
-  // Label for the first instruction after the if-else statement
-  LABEL(after_ifelse_label);
-}
-
-static void codegen_whilestmt(T_stmt stmt) { //PROJECT 4
-  // Labels for the start and end of the while loop
-  int start_label = label_counter++;
-  int end_label = label_counter++;
-
-  // Label at the start of the loop, where the condition will be re-evaluated each iteration
-  LABEL(start_label);
-
-  // Generate code for the condition expression and store the result in %rax
-  codegen_expr(stmt->whilestmt.cond);
-  POP("%rax");
-
-  // Compare the result to "false" and jump to the end of the loop if false
-  CMP0("%rax");
-  JE(end_label);
-
-  // Contents of the while loop body
-  codegen_stmt(stmt->whilestmt.body);
-
-  // Unconditionally jump to the loop head to re-evaluate the condition
-  JMP(start_label);
-
-  // Label for the first instruction after the while statement
-  LABEL(end_label);
-}
 
 static void codegen_compoundstmt(T_stmt stmt) { 
   //generate the code for the body of the compound statement
