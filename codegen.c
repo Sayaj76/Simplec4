@@ -17,6 +17,10 @@ FILE *codegenout;  // the output of code generation
 #define SUB(arg1, arg2) fprintf(codegenout, "\tsub\t%s, %s\n", arg1, arg2)
 #define SUBCONST(arg1, arg2) fprintf(codegenout, "\tsub\t$%d, %s\n", arg1, arg2)
 #define IMUL(arg1, arg2) fprintf(codegenout, "\timul\t%s, %s\n", arg1, arg2)
+#define CDQ() fprintf(codegenout, "\tcdq\n")
+#define IDIV(reg) fprintf(codegenout, "\tidiv\t%s\n", reg)
+#define CALL(arg1) fprintf(codegenout, "\tcall\t%s\n", arg1)
+#define RET fprintf(codegenout, "\tret\n")
 #define COMMENT(arg1) fprintf(codegenout, "\t# %s\n", arg1)
 
 #define CMP0(arg) fprintf(codegenout,"\tcmp $0, %s\n", arg)
